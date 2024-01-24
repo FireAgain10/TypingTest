@@ -15,7 +15,7 @@ namespace TypingTest
         private bool init = true;
         private int charIndex = 0;
         private int lastCharIndex = 0;
-        private bool colorFlag = false;
+        private bool backFlag = false;
         private fetchColor setColor = fetchColor.Original;
         private List<int> redChar = new List<int>();
         private Font myFont;
@@ -36,7 +36,7 @@ namespace TypingTest
             BackColor = Color.Transparent;
 
             this.Text = "Hello, this is some text!";
-            myFont = new Font("Arial", 16, FontStyle.Regular);
+            myFont = new Font("Arial", 20, FontStyle.Regular);
             redChar = new List<int>();
             using (Graphics g = CreateGraphics())
             {
@@ -131,7 +131,7 @@ namespace TypingTest
             string text = this.Text;
             using (Graphics g = CreateGraphics())
             {
-                if (colorFlag)
+                if (backFlag)
                 {
                     drawCaret(e, Color.DarkOrange, bounds[lastCharIndex].prevCaret, (int)charHeight);
                 }
@@ -146,7 +146,14 @@ namespace TypingTest
                 }
                 else
                 {
+                    if (backFlag)
+                    {
                         drawText(e, text[lastCharIndex].ToString(), Color.Black, bounds[lastCharIndex].front);
+                    }
+                    else
+                    {
+                        drawText(e, text[lastCharIndex].ToString(), Color.Gray, bounds[lastCharIndex].front);
+                    }
                 }
             }
         }
@@ -198,7 +205,7 @@ namespace TypingTest
 
             if (isValidChar(ch) && charIndex != this.Text.Length)
             {
-                colorFlag = false;
+                backFlag = false;
                 if (this.Text[charIndex].ToString() != e.KeyChar.ToString())
                 {
                     //setColor = (int)fetchColor.Red;
@@ -226,7 +233,7 @@ namespace TypingTest
             {
                 charIndex--;
                 lastCharIndex = charIndex;
-                colorFlag = true;
+                backFlag = true;
                 if (redChar.Contains(charIndex))
                 {
                     redChar.Remove(charIndex);
