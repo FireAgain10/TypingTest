@@ -13,6 +13,7 @@ namespace TypingTest
     public partial class Form1 : Form
     {
         TransparentPanel panel;
+        private Func<int, bool> fn;
         public Form1()
         {
             InitializeComponent();
@@ -23,7 +24,8 @@ namespace TypingTest
 
         public void addComponents()
         {
-             panel = new TransparentPanel();
+            Func<int, bool> fn= this.setMainFormHeight;
+             panel = new TransparentPanel(fn);
 
             panel.Dock = DockStyle.Fill;
             this.Controls.Add(panel);
@@ -36,6 +38,12 @@ namespace TypingTest
             //label.TextAlign = ContentAlignment.MiddleCenter;
 
             //panel.Controls.Add(label);
+        }
+
+        private bool setMainFormHeight(int height)
+        {
+            this.Height = height;
+            return true;
         }
         protected override void OnKeyPress(KeyPressEventArgs e)
         {

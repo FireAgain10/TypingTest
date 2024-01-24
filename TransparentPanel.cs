@@ -30,21 +30,69 @@ namespace TypingTest
             Red = 1,
             Original = 2
         }
-        public TransparentPanel()
-        {
-            SetStyle(ControlStyles.SupportsTransparentBackColor, true);
-            BackColor = Color.Transparent;
+        private Func<int, bool> setMainFormHeight;
+        private int myWidth;
 
-            this.Text = "Hello, this is some text!";
+        public TransparentPanel(Func<int, bool> callback)
+        {
+            setMainFormHeight = callback;
+            SetStyle(ControlStyles.SupportsTransparentBackColor, true);
+            BackColor = Color.LightGreen;
+
+            this.Text = "Hello, this is some text! The program '[8500] TypingTest.exe' has exited with code ";
             myFont = new Font("Arial", 20, FontStyle.Regular);
             redChar = new List<int>();
+            myWidth = this.Width;
             using (Graphics g = CreateGraphics())
             {
                 charHeight = g.MeasureString(this.Text[0].ToString(), myFont).Height;
                 // nextCharWidth = g.MeasureString(this.Text[0].ToString(), myFont).Width;
+                int height = ((int)charHeight) * 4;
+                setMainFormHeight(height);
+                // this.Height = height; 
+            }
+            setMultilineText(this.Text);
+        }
+
+        private bool setMultilineText(string text)
+        {
+            int lastIdx = 0;
+            var idx = GetWhitespaceIndex(text);
+            while (true)
+            {
+                if (toNextLine(text.Substring(0, idx)))
+                {
+                    this.Text = text.Substring(0,lastIdx);
+                    return true;
+                }
+                else
+                {
+                    lastIdx = idx;
+                    idx++;
+                    idx += GetWhitespaceIndex(text.Substring(idx));
+                }
             }
         }
 
+        private int GetWhitespaceIndex(string input)
+        {
+            // Find the index of the first whitespace character
+            int index = input.IndexOf(' ');
+            return index;
+        }
+        private bool toNextLine(string input)
+        {
+            using (Graphics g = CreateGraphics())
+            {
+                var stringWidth = g.MeasureString(input, myFont).Width;
+                if (stringWidth > myWidth)
+                {
+                    return true;
+                }
+                else
+                { return false; }
+            }
+        }
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
