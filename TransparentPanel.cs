@@ -16,7 +16,7 @@ namespace TypingTest
         private bool init = true;
         private int charIndex = 0;
         private int lastCharIndex = 0;
-        private bool colorFlag = false;
+        private bool backFlag = false;
         private fetchColor setColor = fetchColor.Original;
         private List<int> redChar = new List<int>();
         private Font myFont;
@@ -33,29 +33,67 @@ namespace TypingTest
             Red = 1,
             Original = 2
         }
-       // private TransparentTextBox tb1;
-        public TransparentPanel()
+        private Func<int, bool> setMainFormHeight;
+        private int myWidth;
+
+        public TransparentPanel(Func<int, bool> callback)
         {
+            setMainFormHeight = callback;
             SetStyle(ControlStyles.SupportsTransparentBackColor, true);
             BackColor = Color.Transparent;
 
-            //tb1 = new TransparentTextBox();
-            //tb1.Dock = DockStyle.Fill;
-            //tb1.Multiline = true;
-            //tb1.WordWrap = true;
-            //tb1.BorderStyle= BorderStyle.None;
-            //tb1.ReadOnly = true;
-            myFont = new Font("Arial", 20, FontStyle.Bold);
-            //tb1.Font = myFont;
-
             this.Text = "Hello, this is some text! including the Mozilla Firefox web browser. Always refer to the specific version of the license provided with the software for precise terms and conditions.";
-
-           // this.Controls.Add(tb1);
+            myFont = new Font("Arial", 20, FontStyle.Regular);
             redChar = new List<int>();
+            myWidth = this.Width;
             using (Graphics g = CreateGraphics())
             {
                 charHeight = g.MeasureString(this.Text[0].ToString(), myFont).Height;
                 // nextCharWidth = g.MeasureString(this.Text[0].ToString(), myFont).Width;
+                int height = ((int)charHeight) * 4;
+                setMainFormHeight(height);
+                // this.Height = height; 
+            }
+            setMultilineText(this.Text);
+        }
+
+        private bool setMultilineText(string text)
+        {
+            int lastIdx = 0;
+            var idx = GetWhitespaceIndex(text);
+            while (true)
+            {
+                if (toNextLine(text.Substring(0, idx)))
+                {
+                    this.Text = text.Substring(0, lastIdx);
+                    return true;
+                }
+                else
+                {
+                    lastIdx = idx;
+                    idx++;
+                    idx += GetWhitespaceIndex(text.Substring(idx));
+                }
+            }
+        }
+
+        private int GetWhitespaceIndex(string input)
+        {
+            // Find the index of the first whitespace character
+            int index = input.IndexOf(' ');
+            return index;
+        }
+        private bool toNextLine(string input)
+        {
+            using (Graphics g = CreateGraphics())
+            {
+                var stringWidth = g.MeasureString(input, myFont).Width;
+                if (stringWidth > myWidth)
+                {
+                    return true;
+                }
+                else
+                { return false; }
             }
         }
 
@@ -145,7 +183,7 @@ namespace TypingTest
             string text = this.Text;
             using (Graphics g = CreateGraphics())
             {
-                if (colorFlag)
+                if (backFlag)
                 {
                     drawCaret(e, Color.DarkOrange, bounds[lastCharIndex].prevCaret, (int)charHeight);
                 }
@@ -160,7 +198,7 @@ namespace TypingTest
                 }
                 else
                 {
-                    if (colorFlag)
+                    if (backFlag)
                     {
                         drawText(e, text[lastCharIndex].ToString(), Color.Black, bounds[lastCharIndex].front);
                     }
@@ -221,7 +259,7 @@ namespace TypingTest
 
             if (isValidChar(ch) && charIndex != this.Text.Length)
             {
-                colorFlag = false;
+                backFlag = false;
                 if (this.Text[charIndex].ToString() != ch.ToString())
                 {
                     //setColor = (int)fetchColor.Red;
@@ -249,7 +287,7 @@ namespace TypingTest
             {
                 charIndex--;
                 lastCharIndex = charIndex;
-                colorFlag = true;
+                backFlag = true;
                 if (redChar.Contains(charIndex))
                 {
                     redChar.Remove(charIndex);

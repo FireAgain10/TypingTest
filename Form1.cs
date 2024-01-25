@@ -15,8 +15,9 @@ namespace TypingTest
     public partial class Form1 : Form
     {
         TransparentPanel panel;
+        private Func<int, bool> fn;
         //public List<int> keyCodeList = new List<int>();
-       // GlobalKeyboardHook keyboardHook = new GlobalKeyboardHook();
+        // GlobalKeyboardHook keyboardHook = new GlobalKeyboardHook();
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
 
@@ -79,10 +80,16 @@ namespace TypingTest
         }
         public void addComponents()
         {
-            panel = new TransparentPanel();
+            Func<int, bool> fn = this.setMainFormHeight;
+            panel = new TransparentPanel(fn);
 
             panel.Dock = DockStyle.Fill;
             this.Controls.Add(panel);
+        }
+        private bool setMainFormHeight(int height)
+        {
+            this.Height = height;
+            return true;
         }
         protected override void OnKeyPress(KeyPressEventArgs e)
         {
