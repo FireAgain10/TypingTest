@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -21,22 +22,35 @@ namespace TypingTest
         private Font myFont;
         private float lastCharWidth = 0;
         private float charHeight = 5;
-        private int penWidth = 3;
+        private int penWidth = 2;
         private int caretOffset = 1;
         private int charSpaceReduce = 4;
         private List<boundStr> bounds = new List<boundStr>();
+        private int KeyPress = 0; 
+        private Mutex mutex = new Mutex();
         private enum fetchColor
         {
             Red = 1,
             Original = 2
         }
+       // private TransparentTextBox tb1;
         public TransparentPanel()
         {
             SetStyle(ControlStyles.SupportsTransparentBackColor, true);
             BackColor = Color.Transparent;
 
-            this.Text = "Hello, this is some text!";
-            myFont = new Font("Arial", 16, FontStyle.Regular);
+            //tb1 = new TransparentTextBox();
+            //tb1.Dock = DockStyle.Fill;
+            //tb1.Multiline = true;
+            //tb1.WordWrap = true;
+            //tb1.BorderStyle= BorderStyle.None;
+            //tb1.ReadOnly = true;
+            myFont = new Font("Arial", 20, FontStyle.Bold);
+            //tb1.Font = myFont;
+
+            this.Text = "Hello, this is some text! including the Mozilla Firefox web browser. Always refer to the specific version of the license provided with the software for precise terms and conditions.";
+
+           // this.Controls.Add(tb1);
             redChar = new List<int>();
             using (Graphics g = CreateGraphics())
             {
@@ -56,7 +70,6 @@ namespace TypingTest
 
             if (allReload)
             {
-
                 updateAll(e);
             }
             else
@@ -64,14 +77,15 @@ namespace TypingTest
                 if (init)
                 {
                     updateAll(e);
-                    init = !init;
+                   init = !init;
                 }
                 else
                 {
+                    KeyPress--;
                     updateOne(e);
                 }
             }
-
+           // mutex.ReleaseMutex();
         }
 
         public void updateAll(PaintEventArgs e)
@@ -146,7 +160,14 @@ namespace TypingTest
                 }
                 else
                 {
+                    if (colorFlag)
+                    {
                         drawText(e, text[lastCharIndex].ToString(), Color.Black, bounds[lastCharIndex].front);
+                    }
+                    else
+                    {
+                        drawText(e, text[lastCharIndex].ToString(), Color.Gray, bounds[lastCharIndex].front);
+                    }
                 }
             }
         }
@@ -188,10 +209,12 @@ namespace TypingTest
             this.Invalidate(); // Trigger repaint when text changes
         }
 
-        public void OnKeyPressEvent(KeyPressEventArgs e)
+        public void OnKeyPressEvent(char ch)
         {
             //  base.OnKeyPress(e);
-            char ch = e.KeyChar;
+            KeyPress++;
+
+            //char ch = e.KeyChar;
             int offset = (((int)charHeight) / 2);
             Rectangle regionToInvalidate;
             int x, y, len, height;
@@ -199,7 +222,7 @@ namespace TypingTest
             if (isValidChar(ch) && charIndex != this.Text.Length)
             {
                 colorFlag = false;
-                if (this.Text[charIndex].ToString() != e.KeyChar.ToString())
+                if (this.Text[charIndex].ToString() != ch.ToString())
                 {
                     //setColor = (int)fetchColor.Red;
                     redChar.Add(charIndex);
@@ -258,6 +281,7 @@ namespace TypingTest
                 Console.WriteLine(ch);
                 Debug.Print(((short)ch).ToString());
             }
+            //mutex.ReleaseMutex();
         }
 
         private bool isValidChar(char ch)
