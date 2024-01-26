@@ -25,7 +25,7 @@ namespace TypingTest
         private float charHeight = 5;
         private int penWidth = 2;
         private int caretOffset = 2;
-        private int charSpaceReduce = 0;
+        private int charSpaceReduce = 6;
         private int spaceWidthInc = 6;
         private List<boundStr> bounds = new List<boundStr>();
         private int KeyPressCount = 0;
@@ -208,7 +208,7 @@ namespace TypingTest
 
                     tmp.nextCaret = fontLen + caretOffset;          // where next caret will be
                     tmp.back = fontLen + caretOffset + penWidth;    // from where paiint should be invalidated if pressed backspace
-                    Console.WriteLine("bounds: {0}: {1},{2},{3},{4} ", tmp.index.ToString(), tmp.front.ToString(), tmp.prevCaret.ToString(), tmp.nextCaret.ToString(), tmp.back.ToString());
+                    Program.printCheckpoint($"bounds: {tmp.index}: {tmp.front},{tmp.prevCaret},{tmp.nextCaret},{tmp.back} ",false);
                     bounds.Add(tmp);
                 }
             }
@@ -285,7 +285,7 @@ namespace TypingTest
                 e.Graphics.DrawString(txt, myFont, brush, loc, 0);
             }
 
-            Program.printCheckpoint($"drawText: {loc.ToString()} ", true);
+            Program.printCheckpoint($"drawText: {loc.ToString()} ", false);
         }
         private void drawCaret(PaintEventArgs e, Color clr, int loc, int height)
         {
@@ -296,7 +296,7 @@ namespace TypingTest
             using (Pen pen = new Pen(clr, penWidth))
             {
                 e.Graphics.DrawLine(pen, p1, p2);
-                Program.printCheckpoint($"drawCaret {p1.ToString()}",true);
+                Program.printCheckpoint($"drawCaret {p1.ToString()}",false);
             }
         }
 
