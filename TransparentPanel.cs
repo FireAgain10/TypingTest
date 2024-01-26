@@ -25,11 +25,11 @@ namespace TypingTest
         private float charHeight = 5;
         private int penWidth = 2;
         private int caretOffset = 2;
-        private int charSpaceReduce = 6;
-        private int spaceWidthInc = 6;
+        private int charSpaceReduce = 2;
+        private int spaceWidthInc = 10;
         private List<boundStr> bounds = new List<boundStr>();
-        private int KeyPressCount = 0;
-        private Mutex mutex = new Mutex();
+        private Mutex mutex;
+        private static bool printAvailable = true;
         private enum fetchColor
         {
             Red = 1,
@@ -39,22 +39,27 @@ namespace TypingTest
         private int myWidth;
         private List<int> nextLine;
         private int endMargin = 5;
+        private Color fontBackColor = Color.Transparent;
 
         public TransparentPanel(Func<int, bool> callback, int formWidth)
         {
             //Console.WriteLine($"TransparentPanel Thread: {Thread.CurrentThread.ManagedThreadId.ToString()}");
+            mutex = new Mutex();
             setMainFormHeight = callback;
             SetStyle(ControlStyles.SupportsTransparentBackColor, true);
-            BackColor = Color.LightBlue;
+            BackColor = Color.Transparent;
             myWidth = formWidth;
             nextLine = new List<int>();
             // this.Text = "HHHHH HHHHH HHHHH HHHHH HHHHH HHHHH";
             var textToShow = "Hello, this is some text! including the Mozilla Firefox web browser. Always refer to the specific version of the license provided with the software for precise terms and conditions.";
+
+            if (Program.fontWidth < 8) Program.fontWidth = 8;
+            setCharSpaceReduction();
             updateText(textToShow);
         }
         private void updateText(string text)
         {
-            myFont = new Font("Arial", 20, FontStyle.Regular);
+            myFont = new Font("Arial", Program.fontWidth, FontStyle.Regular);
             redChar = new List<int>();
             using (Graphics g = CreateGraphics())
             {
@@ -65,6 +70,19 @@ namespace TypingTest
             }
             //string textToCheck = this.Text;
             setMultilineText(text);
+        }
+
+        private void setCharSpaceReduction()
+        {
+            var p = Program.fontWidth;
+            if (p <= 12) { charSpaceReduce = 0; ; caretOffset = 1; penWidth = 1; }
+            else if (p > 12 && p <= 24) { charSpaceReduce = 3; caretOffset = 1; penWidth = 2; }
+            else if (p > 24 && p <= 32) { charSpaceReduce = 6; caretOffset = 3; penWidth = 3; }
+            else if (p > 32 && p <= 36) { charSpaceReduce = 8; caretOffset = 4; penWidth = 4; }
+            else if (p > 36 && p <= 40) { charSpaceReduce = 9; caretOffset = 4; penWidth = 4; }
+            else if (p > 40 && p <= 44) { charSpaceReduce = 10; caretOffset = 4; penWidth = 4; }
+            else if (p > 44 && p <= 50) { charSpaceReduce = 12; caretOffset = 4; penWidth = 4; }
+            else { charSpaceReduce = 14; caretOffset = 4; penWidth = 5; }
         }
 
         private bool setMultilineText(string text)
@@ -122,13 +140,21 @@ namespace TypingTest
                     foreach (char c in input)
                     {
                         stringWidth += g.MeasureString(c.ToString(), myFont).Width;
+                        if (char.IsWhiteSpace(c))
+                        {
+                            stringWidth += spaceWidthInc;
+                        }
+                        else
+                        {
+                            stringWidth -= charSpaceReduce;
+                        }
                     }
                 }
                 else
                 {
                     stringWidth = g.MeasureString(input, myFont).Width;
                 }
-                Program.printCheckpoint($"{myWidth} : {stringWidth} --- {input}", true);
+                Program.printCheckpoint($"{myWidth}:{endMargin} : {stringWidth} --- {input}", true);
                 if (stringWidth > myWidth-endMargin)
                 {
                     return true;
@@ -162,11 +188,11 @@ namespace TypingTest
                 }
                 else
                 {
-                    KeyPressCount--;
                     updateOne(e);
                 }
             }
-            // mutex.ReleaseMutex();
+            printAvailable = true;
+          //  mutex.ReleaseMutex();
         }
 
         public void updateAll(PaintEventArgs e)
@@ -175,27 +201,27 @@ namespace TypingTest
             int fontLen = 0;
             using (Graphics g = CreateGraphics())
             {
-                // drawText(e, text.ToString(), Color.Red, fontLen);
+                // drawText(e, text.ToString(), Color.Red, fontLen); // set it for printCharByChar
                 for (int i = 0; i < text.Length; i++)
                 {
                     boundStr tmp = new boundStr();
                     if (i == charIndex)
                     {
-                        drawCaret(e, Color.DarkOrange, fontLen + caretOffset, (int)charHeight);
+                        drawCaret(e, Color.DarkOrange, fontBackColor, fontLen + caretOffset, (int)charHeight);
                     }
                     if (redChar.Contains(i))
                     {
-                        drawText(e, text[i].ToString(), Color.Red, fontLen);
+                        drawText(e, text[i].ToString(), Color.Red, fontBackColor, fontLen);
                     }
                     else
                     {
                         if (i < charIndex)
                         {
-                            drawText(e, text[i].ToString(), Color.Gray, fontLen);
+                            drawText(e, text[i].ToString(), Color.Gray, fontBackColor, fontLen);
                         }
                         else
                         {
-                            drawText(e, text[i].ToString(), Color.Black, fontLen);
+                            drawText(e, text[i].ToString(), Color.Black, fontBackColor, fontLen);
                         }
                     }
 
@@ -221,26 +247,34 @@ namespace TypingTest
             {
                 if (backFlag)
                 {
-                    drawCaret(e, Color.DarkOrange, bounds[lastCharIndex].prevCaret, (int)charHeight);
+                    drawCaret(e, Color.DarkOrange, fontBackColor, bounds[lastCharIndex].prevCaret, (int)charHeight);
                 }
                 else
                 {
-                    drawCaret(e, Color.DarkOrange, bounds[lastCharIndex].nextCaret, (int)charHeight);
+                    if (redChar.Contains(lastCharIndex) && Program.highlightMistake)
+                    {
+                        var bgClr = fontBackColor;// Color.FromArgb(255, Color.WhitrSmoke);
+                        drawCaret(e, Color.DarkOrange,bgClr, bounds[lastCharIndex].nextCaret, (int)charHeight);
+                    }
+                    else
+                    {
+                        drawCaret(e, Color.DarkOrange, fontBackColor, bounds[lastCharIndex].nextCaret, (int)charHeight);
+                    }
                 }
 
                 if (redChar.Contains(lastCharIndex))
                 {
-                    drawText(e, text[lastCharIndex].ToString(), Color.Red, bounds[lastCharIndex].front);
+                    drawText(e, text[lastCharIndex].ToString(), Color.Red,fontBackColor, bounds[lastCharIndex].front);
                 }
                 else
                 {
                     if (backFlag)
                     {
-                        drawText(e, text[lastCharIndex].ToString(), Color.Black, bounds[lastCharIndex].front);
+                        drawText(e, text[lastCharIndex].ToString(), Color.Black, fontBackColor, bounds[lastCharIndex].front);
                     }
                     else
                     {
-                        drawText(e, text[lastCharIndex].ToString(), Color.Gray, bounds[lastCharIndex].front);
+                        drawText(e, text[lastCharIndex].ToString(), Color.Gray, fontBackColor, bounds[lastCharIndex].front);
                     }
                 }
             }
@@ -278,22 +312,30 @@ namespace TypingTest
             }
             return width;
         }
-        private void drawText(PaintEventArgs e, string txt, Color clr, int loc)
+        private void drawText(PaintEventArgs e, string txt, Color fontColor, Color backColor, int loc)
         {
-            using (Brush brush = new SolidBrush(clr))
+            //using (Brush brush = new SolidBrush(backColor))
+            //{
+            //    e.Graphics.FillRectangle(brush,regionToInvalidate);
+            //}
+            using (Brush brush = new SolidBrush(fontColor))
             {
                 e.Graphics.DrawString(txt, myFont, brush, loc, 0);
             }
 
             Program.printCheckpoint($"drawText: {loc.ToString()} ", false);
         }
-        private void drawCaret(PaintEventArgs e, Color clr, int loc, int height)
+        private void drawCaret(PaintEventArgs e, Color fontColor, Color backColor, int loc, int height)
         {
             int offset = (height / 2);
             Point p1 = new Point(loc, -offset);
             Point p2 = new Point(loc, height);
 
-            using (Pen pen = new Pen(clr, penWidth))
+            using (Brush brush = new SolidBrush(backColor))
+            {
+                e.Graphics.FillRectangle(brush, regionToInvalidate);
+            }
+            using (Pen pen = new Pen(fontColor, penWidth))
             {
                 e.Graphics.DrawLine(pen, p1, p2);
                 Program.printCheckpoint($"drawCaret {p1.ToString()}",false);
@@ -306,15 +348,17 @@ namespace TypingTest
             this.Invalidate(); // Trigger repaint when text changes
         }
 
+        private Rectangle regionToInvalidate;
         public void OnKeyPressEvent(char ch)
         {
-            // Console.WriteLine("here");
+            Program.printCheckpoint($"OnKeyPressEvent {ch}", false);
             //  base.OnKeyPress(e);
-            KeyPressCount++;
+            if (!printAvailable) { return; }
+            printAvailable = false;
+           // mutex.WaitOne();
 
             //char ch = e.KeyChar;
             int offset = (((int)charHeight) / 2);
-            Rectangle regionToInvalidate;
             int x, y, len, height;
 
             if (isValidChar(ch) && charIndex != this.Text.Length)
@@ -332,7 +376,7 @@ namespace TypingTest
                     len = bounds[charIndex].back - bounds[charIndex].front;
                     height = 3 * offset;
                     regionToInvalidate = new Rectangle(x, y, len, height);
-                    Console.WriteLine(Environment.NewLine + "Invalidate From: {0} To: {1}  Index {2}", x, (x + len).ToString(), charIndex.ToString());
+                    Program.printCheckpoint($"Invalidate From: {x} To: {(x + len)}  Index {charIndex}",true);
                      this.Invalidate(regionToInvalidate);
                 }
                 else
@@ -365,7 +409,7 @@ namespace TypingTest
                     len = bounds[charIndex].back - bounds[charIndex].front;
                     height = 3 * offset;
                     regionToInvalidate = new Rectangle(x, y, len, height);
-                    Console.WriteLine(Environment.NewLine + "Invalidate From: {0} To: {1}  Index {2}", x, (x + len).ToString(), charIndex.ToString());
+                    Program.printCheckpoint($"Invalidate From: {x} To: {(x + len)}  Index {charIndex}", true);
                     this.Invalidate(regionToInvalidate);
                 }
                 else
@@ -378,6 +422,7 @@ namespace TypingTest
             {
                 Console.WriteLine(ch);
                 Debug.Print(((short)ch).ToString());
+                printAvailable = true;
             }
             //mutex.ReleaseMutex();
         }
@@ -502,8 +547,8 @@ namespace TypingTest
         {
             Random random = new Random();
             Color clr = Color.FromArgb(random.Next(256), random.Next(256), random.Next(256));
-            //Color clr = Color.Red;
-            // Console.WriteLine(clr.Name);
+            //Color fontColor = Color.Red;
+            // Console.WriteLine(fontColor.Name);
             return clr;
         }
         private Color SetDefinedColor()

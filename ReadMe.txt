@@ -16,3 +16,8 @@ Date: 22/01/24			Version: 1.0.0.3
 ---------------------------------------------------------
 Date: 25/01/24			Version: 1.0.0.4
 1. Merged 1.0.0.2 with 1.0.0.3
+
+---------------------------------------------------------
+Date: 26/01/24			Version: 1.0.0.5
+1. Fixed Char widths.
+2. Added Highlight Color, Font size change.

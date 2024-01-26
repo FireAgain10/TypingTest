@@ -27,7 +27,14 @@ namespace TypingTest
         }
         public void addComponents()
         {
-            this.Width = 1000;
+            Screen primaryScreen = Screen.PrimaryScreen;
+            Program.leftRightMargin = (Program.leftRightMargin > 0.2) ? 0.2 : Program.leftRightMargin;
+            Program.topMargin = (Program.topMargin > 0.8) ? 0.8 : Program.topMargin;
+
+            var width = (1 - (2 * Program.leftRightMargin));
+            this.Width = (int) (primaryScreen.Bounds.Width*width);
+
+            this.Location = new Point((int)(primaryScreen.Bounds.Width * Program.leftRightMargin), (int)(primaryScreen.Bounds.Height * Program.topMargin));
             Func<int, bool> fn = this.setMainFormHeight;
             panel = new TransparentPanel(fn, this.Width);
 
@@ -45,7 +52,12 @@ namespace TypingTest
             panel.OnKeyPressEvent(ch);
             return true;
         }
-
+        protected override void OnKeyPress(KeyPressEventArgs e)
+        {
+            base.OnKeyPress(e);
+            char ch = e.KeyChar;
+            if (!Program.enableGlobalKeyListener) panel.OnKeyPressEvent(ch);
+        }
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             kbHook.destroy();
