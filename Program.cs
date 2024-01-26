@@ -12,7 +12,7 @@ namespace TypingTest
         public static bool enableGlobalKeyListener = false;
         public static bool highlightMistake = true;
         public static double leftRightMargin = 0.15, topMargin = 0.6;
-        public static int fontWidth = 20;
+        public static int fontWidth = 30;
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
