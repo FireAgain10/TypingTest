@@ -8,6 +8,8 @@ namespace TypingTest
 {
     internal static class Program
     {
+        public static bool charByCharPrint = true;
+        public static bool enableGlobalKeyListener = false;
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
@@ -24,6 +26,13 @@ namespace TypingTest
 
 
             Application.Run(transparentTextForm);
+        }
+
+        public static void printCheckpoint(String str,bool printFlag)
+        {
+           if  (printFlag) {
+                Console.WriteLine(str);
+            }
         }
 
 
