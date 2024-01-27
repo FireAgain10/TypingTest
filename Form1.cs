@@ -15,6 +15,8 @@ namespace TypingTest
     public partial class Form1 : Form
     {
         TransparentPanel panel;
+        private bool isDragging = false;
+        private Point offset;
 
         private GlobalKeyboardHook kbHook;
         public Form1()
@@ -40,10 +42,15 @@ namespace TypingTest
 
             panel.Dock = DockStyle.Fill;
             this.Controls.Add(panel);
+
+            panel.MouseDown += Form1_MouseDown;
+            panel.MouseMove += Form1_MouseMove;
+            panel.MouseUp += Form1_MouseUp;
         }
         private bool setMainFormHeight(int height)
         {
-            this.Height = height;
+            int titleBarHeight = SystemInformation.CaptionHeight;
+            this.Height = height + titleBarHeight;
             return true;
         }
 
@@ -65,6 +72,34 @@ namespace TypingTest
 
         private void Form1_Load(object sender, EventArgs e)
         {
+        }
+
+
+        private void Form1_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                isDragging = true;
+                offset = new Point(e.X, e.Y);
+            }
+        }
+
+        private void Form1_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (isDragging)
+            {
+                Point newLocation = this.PointToScreen(new Point(e.X, e.Y));
+                newLocation.Offset(-offset.X, -offset.Y);
+                this.Location = newLocation;
+            }
+        }
+
+        private void Form1_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                isDragging = false;
+            }
         }
     }
 

@@ -39,10 +39,13 @@ namespace TypingTest
         private int myWidth;
         private List<int> nextLine;
         private List<string> textStrings;
-        private int endMargin = 5;
+        private int endMargin = 9;
         private Color fontBackColor = Color.Transparent;
         private string textToShow;
-
+        private bool nextLineChange;
+        private bool xhangeLineRender = false;
+        private bool prevLineChange;
+        private int toNextLineDisplay = 0;
         public TransparentPanel(Func<int, bool> callback, int formWidth)
         {
             //Console.WriteLine($"TransparentPanel Thread: {Thread.CurrentThread.ManagedThreadId.ToString()}");
@@ -63,14 +66,15 @@ namespace TypingTest
         }
         private void updateText(string text)
         {
+            Program.fontWidth = (Program.fontWidth > 50) ? 50 : Program.fontWidth;
             myFont = new Font("Arial", Program.fontWidth, FontStyle.Regular);
             redChar = new List<int>();
             using (Graphics g = CreateGraphics())
             {
                 charHeight = g.MeasureString(text, myFont).Height;
-                int height = (int)(charHeight * 4.5) ;
+                int height = (int)(charHeight * 3.3);
                 setMainFormHeight(height);
-                // this.Height = height; //dock fill
+                this.Height = height; //dock fill
             }
             //string textToCheck = this.Text;
             setMultilineText(text);
@@ -98,25 +102,29 @@ namespace TypingTest
             idx = GetWhitespaceIndex(text);
             while (true) //implement quick sort
             {
-                if (toNextLine(textToCheck.Substring(0, idx)))
+                if (idx != -1 && toNextLine(textToCheck.Substring(0, idx)))
                 {
-                    if (nextLine.Count > 0) { nextLine.Add(nextLine[nextLine.Count - 1] + lastIdxCheck ); }
+                    if (nextLine.Count > 0) { nextLine.Add(nextLine[nextLine.Count - 1] + lastIdxCheck); }
                     else { nextLine.Add(lastIdxCheck); }
 
                     Program.printCheckpoint($"{textToCheck.Substring(0, lastIdxCheck)}", true);
                     textStrings.Add(textToCheck.Substring(0, lastIdxCheck));
-                    textToCheck = textToCheck.Substring(lastIdxCheck );
+                    textToCheck = textToCheck.Substring(lastIdxCheck);
                     lastIdxCheck = 0;
                     finalIdx = textToCheck.Length;
                     idx = GetWhitespaceIndex(textToCheck);
                     //this.Text = textToCheck.Substring(0, lastIdxCheck);
                     //return true;
+                    if (idx == -1)
+                    {
+                        idx = textToCheck.Length;
+                    }
                 }
                 else
                 {
                     if (idx >= finalIdx)
                     {
-                        if (nextLine.Count > 0) { nextLine.Add(nextLine[nextLine.Count - 1] + finalIdx ); }
+                        if (nextLine.Count > 0) { nextLine.Add(nextLine[nextLine.Count - 1] + finalIdx); }
                         else { nextLine.Add(finalIdx); }
                         //this.Text = textToCheck.Substring(0, lastIdxCheck);
                         Program.printCheckpoint($"{textToCheck.Substring(0, finalIdx)}", true);
@@ -223,23 +231,23 @@ namespace TypingTest
         public void updateAll(PaintEventArgs e)
         {
             int strIdx = 0;
-            int fontLen = 0;
+            int fontPos = 0;
             using (Graphics g = CreateGraphics())
             {
-                while (strIdx<textStrings.Count && strIdx<3)
+                while (strIdx < textStrings.Count && strIdx-toNextLineDisplay < 3)
                 {
-                    string text = textStrings[strIdx];
+                    string text = textStrings[strIdx+toNextLineDisplay];
                     int offset = (((int)charHeight) / 2);
-                    // drawText(e, text.ToString(), Color.Red, fontLen); // set it for printCharByChar
+                    // drawText(e, text.ToString(), Color.Red, fontPos); // set it for printCharByChar
                     for (int i = 0; i < text.Length; i++)
                     {
                         boundStr tmp = new boundStr();
-                      
-                        tmp.index = (strIdx>0 ? bounds.Count : i);
-                        tmp.x1 = fontLen;
-                        tmp.yCaret = (strIdx *  (2*offset));
-                        //tmp.yText = offset + (strIdx * 3* (2 * offset));
-                        tmp.prevCaret = fontLen + caretOffset;          // where  caret should be if pressed backspace
+
+                        tmp.index = (strIdx > 0 ? bounds.Count : i);
+                        tmp.x1 = fontPos;
+                        tmp.yCaret = (strIdx * (2 * offset));
+                        tmp.yText = (strIdx * (2 * offset));
+                        tmp.prevCaret = fontPos + caretOffset;          // where  caret should be if pressed backspace
 
                         if (i == charIndex && strIdx == 0)
                         {
@@ -262,17 +270,17 @@ namespace TypingTest
                         }
 
 
-                        lastCharWidth = getCharWidth(text,i, g);
-                        fontLen += (int)Math.Floor(lastCharWidth);      //end position of char
+                        lastCharWidth = getCharWidth(text, i, g);
+                        fontPos += (int)Math.Floor(lastCharWidth);      //end position of char
 
-                        tmp.nextCaret = fontLen + caretOffset;          // where next caret will be
-                        tmp.x2 = fontLen + caretOffset + penWidth;    // from where paiint should be invalidated if pressed backspace
+                        tmp.nextCaret = fontPos + caretOffset;          // where next caret will be
+                        tmp.x2 = fontPos + caretOffset + penWidth;    // from where paiint should be invalidated if pressed backspace
                         Program.printCheckpoint($"bounds: {tmp.index}: {tmp.x1},{tmp.prevCaret},{tmp.nextCaret},{tmp.x2} ", true);
                         bounds.Add(tmp);
                     }
 
                     strIdx++;
-                    fontLen = 0;
+                    fontPos = 0;
                 }
             }
         }
@@ -284,9 +292,21 @@ namespace TypingTest
                 if (backFlag)
                 {
                     drawCaret(e, Color.DarkOrange, fontBackColor, bounds[lastCharIndex].prevCaret, (int)charHeight, bounds[lastCharIndex].yCaret);
+                    if (prevLineChange)
+                    {
+                        changeLineRender();
+                        return;
+                    }
                 }
                 else
                 {
+                    if (nextLineChange && nextLine.Contains(charIndex))
+                    {
+                        changeLineRender();
+                        drawCaret(e, Color.DarkOrange, fontBackColor, bounds[charIndex].prevCaret, (int)charHeight, bounds[charIndex].yCaret);
+                        return;
+                    }
+
                     if (redChar.Contains(lastCharIndex) && Program.highlightMistake)
                     {
                         var bgClr = fontBackColor;// Color.FromArgb(255, Color.WhitrSmoke);
@@ -297,6 +317,8 @@ namespace TypingTest
                         drawCaret(e, Color.DarkOrange, fontBackColor, bounds[lastCharIndex].nextCaret, (int)charHeight, bounds[lastCharIndex].yCaret);
                     }
                 }
+
+                // if (nextLineChange) return;
 
                 if (redChar.Contains(lastCharIndex))
                 {
@@ -334,7 +356,7 @@ namespace TypingTest
             }
         }
 
-        private float getCharWidth(string text ,int idx, Graphics g)
+        private float getCharWidth(string text, int idx, Graphics g)
         {
             float width;
             if (text[idx].ToString() == " ")
@@ -348,7 +370,7 @@ namespace TypingTest
             }
             return width;
         }
-        private void drawText(PaintEventArgs e, string txt, Color fontColor, Color backColor, int posX,int posY = 0)
+        private void drawText(PaintEventArgs e, string txt, Color fontColor, Color backColor, int posX, int posY = 0)
         {
             //using (Brush brush = new SolidBrush(backColor))
             //{
@@ -363,9 +385,9 @@ namespace TypingTest
         }
         private void drawCaret(PaintEventArgs e, Color fontColor, Color backColor, int posX, int height, int posY = 0)
         {
-           // int offset = (height / 2);
+            // int offset = (height / 2);
             Point p1 = new Point(posX, posY);
-            Point p2 = new Point(posX, posY+height);
+            Point p2 = new Point(posX, posY + height);
 
             using (Brush brush = new SolidBrush(backColor))
             {
@@ -388,32 +410,59 @@ namespace TypingTest
         public void OnKeyPressEvent(char ch)
         {
             Program.printCheckpoint($"OnKeyPressEvent {ch}", false);
-            //  base.OnKeyPress(e);
+
             if (!printAvailable) { return; }
             printAvailable = false;
-            // mutex.WaitOne();
 
-            //char ch = e.KeyChar;
+            backFlag = ((short)Keys.Back == ((short)ch)) ? true : false;
+
             int offset = (((int)charHeight) / 2);
-            int x, y, len, height,strIdx=0,charPos;
+            int x, y, len, height, strIdx = 0, charPos;
+            prevLineChange = nextLineChange = false;
 
             charPos = charIndex;
             foreach (int num in nextLine)
             {
-                if(charIndex >= num)
-                {  
-                      strIdx++;
+                if (charIndex >= num)
+                {
+                    if (backFlag && charIndex == num)
+                    {
+                        prevLineChange = true;
+                        xhangeLineRender = true;
+                        break;
+                    }
+                     strIdx++;
                     charPos = charIndex - nextLine[strIdx - 1];
                 }
                 else
                 {
+                    if (charIndex == num - 1)
+                    {
+                        //if (strIdx >= 1 && strIdx != textStrings.Count-2)
+                        //{
+                        //    toNextLineDisplay++;
+                        //    init = true;
+                        //    this.Invalidate();
+                        //}
+                        if (strIdx == 2 && !backFlag)
+                        {
+                            Program.printCheckpoint("End of Text", true);
+                            printAvailable = true;
+                            return;
+                        }   //End of third Line
+                        nextLineChange = true;
+                        xhangeLineRender = true;
+                    }
+                    else
+                    {
+                        nextLineChange = false;
+                    }
                     break;
                 }
             }
 
-            if (isValidChar(ch) && strIdx<=2)
+            if (isValidChar(ch) && strIdx <= 2)
             {
-                backFlag = false;
                 if (textStrings[strIdx][charPos].ToString() != ch.ToString())
                 {
                     redChar.Add(charIndex);
@@ -423,10 +472,10 @@ namespace TypingTest
                     x = bounds[charIndex].x1;
                     y = bounds[charIndex].yCaret;
                     len = bounds[charIndex].x2 - bounds[charIndex].x1;
-                    height =  (int)charHeight;
+                    height = (int)charHeight;
 
                     regionToInvalidate = new Rectangle(x, y, len, height);
-                    Program.printCheckpoint($"Invalidate From: [{x},{y}] To: [{(x + len)},{y+height}]  Index {charIndex}", true);
+                    Program.printCheckpoint($"Invalidate From: [{x},{y}] To: [{(x + len)},{y + height}]  Index {charIndex}", true);
                     this.Invalidate(regionToInvalidate);
                 }
                 else
@@ -436,11 +485,10 @@ namespace TypingTest
                 lastCharIndex = charIndex;
                 charIndex++;
             }
-            else if ((short)Keys.Back == ((short)ch) && charIndex != 0) //backspace
+            else if (backFlag && charIndex != 0) //backspace
             {
                 charIndex--;
                 lastCharIndex = charIndex;
-                backFlag = true;
                 if (redChar.Contains(charIndex))
                 {
                     redChar.Remove(charIndex);
@@ -450,7 +498,7 @@ namespace TypingTest
                     x = bounds[charIndex].x1;
                     y = bounds[charIndex].yCaret;
                     len = bounds[charIndex].x2 - bounds[charIndex].x1;
-                    height =  (int)charHeight;
+                    height = (int)charHeight;
 
                     regionToInvalidate = new Rectangle(x, y, len, height);
                     Program.printCheckpoint($"Invalidate From: [{x},{y}] To: [{(x + len)},{y + height}]  Index {charIndex}", true);
@@ -467,6 +515,32 @@ namespace TypingTest
                 Debug.Print(((short)ch).ToString());
                 printAvailable = true;
             }
+            //if (nextLineChange) changeLineRender();
+        }
+
+        private void changeLineRender()
+        {
+            if (!xhangeLineRender) return;
+            int x = 0, y = 0, len = 0, height = 0;
+            if (backFlag)
+            {
+                x = bounds[charIndex + 1].x1;
+                y = bounds[charIndex + 1].yCaret;
+                len = caretOffset + penWidth;
+                height = (int)charHeight;
+                xhangeLineRender = false;
+            }
+            else
+            {
+                x = bounds[charIndex].x1;
+                y = bounds[charIndex].yCaret;
+                len = caretOffset + penWidth;
+                height = (int)charHeight;
+                xhangeLineRender = false;
+            }
+            regionToInvalidate = new Rectangle(x, y, len, height);
+            Program.printCheckpoint($"Invalidate for Caret Only From: [{x},{y}] To: [{(x + len)},{y + height}]  Index {charIndex}", true);
+            this.Invalidate(regionToInvalidate);
         }
 
         private bool isValidChar(char ch)
@@ -507,11 +581,11 @@ namespace TypingTest
     public class boundStr
     {
         public int index;
-        public int x1;
-        public int x2;
+        public int x1;          //1
+        public int x2;          //3
         public int yCaret;
         public int yText;
-        public int prevCaret;
-        public int nextCaret;
+        public int prevCaret;   //2
+        public int nextCaret;   //4
     }
 }
