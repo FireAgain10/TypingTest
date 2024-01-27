@@ -46,6 +46,8 @@ namespace TypingTest
         private bool xhangeLineRender = false;
         private bool prevLineChange;
         private int toNextLineDisplay = 0;
+        private bool resetBoundsHeightFlag = false;
+        private bool endOfText = false;
         public TransparentPanel(Func<int, bool> callback, int formWidth)
         {
             //Console.WriteLine($"TransparentPanel Thread: {Thread.CurrentThread.ManagedThreadId.ToString()}");
@@ -219,6 +221,11 @@ namespace TypingTest
                     updateAll(e);
                     init = !init;
                 }
+                else if(resetBoundsHeightFlag)
+                {
+                    resetAlltext(e);
+                    resetBoundsHeightFlag = false;
+                }
                 else
                 {
                     updateOne(e);
@@ -234,9 +241,9 @@ namespace TypingTest
             int fontPos = 0;
             using (Graphics g = CreateGraphics())
             {
-                while (strIdx < textStrings.Count && strIdx-toNextLineDisplay < 3)
+                while (strIdx < textStrings.Count)
                 {
-                    string text = textStrings[strIdx+toNextLineDisplay];
+                    string text = textStrings[strIdx];
                     int offset = (((int)charHeight) / 2);
                     // drawText(e, text.ToString(), Color.Red, fontPos); // set it for printCharByChar
                     for (int i = 0; i < text.Length; i++)
@@ -245,30 +252,31 @@ namespace TypingTest
 
                         tmp.index = (strIdx > 0 ? bounds.Count : i);
                         tmp.x1 = fontPos;
-                        tmp.yCaret = (strIdx * (2 * offset));
-                        tmp.yText = (strIdx * (2 * offset));
+                        tmp.yCaret = (strIdx * ((int)charHeight));
+                        tmp.yText = (strIdx * ((int)charHeight));
                         tmp.prevCaret = fontPos + caretOffset;          // where  caret should be if pressed backspace
-
-                        if (i == charIndex && strIdx == 0)
+                        if (strIdx < 3)
                         {
-                            drawCaret(e, Color.DarkOrange, fontBackColor, tmp.prevCaret, (int)charHeight, tmp.yCaret);
-                        }
-                        if (redChar.Contains(i))
-                        {
-                            drawText(e, text[i].ToString(), Color.Red, fontBackColor, tmp.x1, tmp.yCaret);
-                        }
-                        else
-                        {
-                            if (i < charIndex)
+                            if (i == charIndex && strIdx == 0)
                             {
-                                drawText(e, text[i].ToString(), Color.Gray, fontBackColor, tmp.x1, tmp.yCaret);
+                                drawCaret(e, Color.DarkOrange, fontBackColor, tmp.prevCaret, (int)charHeight, tmp.yCaret);
+                            }
+                            if (redChar.Contains(i))
+                            {
+                                drawText(e, text[i].ToString(), Color.Red, fontBackColor, tmp.x1, tmp.yCaret);
                             }
                             else
                             {
-                                drawText(e, text[i].ToString(), Color.Black, fontBackColor, tmp.x1, tmp.yCaret);
+                                if (i < charIndex)
+                                {
+                                    drawText(e, text[i].ToString(), Color.Gray, fontBackColor, tmp.x1, tmp.yCaret);
+                                }
+                                else
+                                {
+                                    drawText(e, text[i].ToString(), Color.Black, fontBackColor, tmp.x1, tmp.yCaret);
+                                }
                             }
                         }
-
 
                         lastCharWidth = getCharWidth(text, i, g);
                         fontPos += (int)Math.Floor(lastCharWidth);      //end position of char
@@ -284,9 +292,47 @@ namespace TypingTest
                 }
             }
         }
+
+        public void resetAlltext(PaintEventArgs e)
+        {
+            int offset,strIdx = 0;
+            using (Graphics g = CreateGraphics())
+            {
+                while (strIdx < textStrings.Count && strIdx  < 3)
+                {
+                    string text = textStrings[toNextLineDisplay+strIdx];
+                    offset = getCharIndexOffset(strIdx);
+
+                    for (int i =0; i < text.Length ; i++)
+                    {
+                        var tmp = bounds[i+ offset];
+                        if (i+ offset == charIndex)
+                        {
+                            drawCaret(e, Color.DarkOrange, fontBackColor, tmp.prevCaret, (int)charHeight, tmp.yCaret);
+                        }
+                        if (redChar.Contains(i+ offset))
+                        {
+                            drawText(e, text[i].ToString(), Color.Red, fontBackColor, tmp.x1, tmp.yCaret);
+                        }
+                        else
+                        {
+                            if (i+ offset < charIndex)
+                            {
+                                drawText(e, text[i].ToString(), Color.Gray, fontBackColor, tmp.x1, tmp.yCaret);
+                            }
+                            else
+                            {
+                                drawText(e, text[i].ToString(), Color.Black, fontBackColor, tmp.x1, tmp.yCaret);
+                            }
+                        }
+                    }
+                    strIdx++;
+                }
+            }
+        }
         public void updateOne(PaintEventArgs e)
         {
-            string text = this.Text;
+            string text =textToShow;
             using (Graphics g = CreateGraphics())
             {
                 if (backFlag)
@@ -338,6 +384,17 @@ namespace TypingTest
             }
         }
 
+        private int getCharIndexOffset(int lineNumber)
+        {
+            if (toNextLineDisplay == 0)
+            {
+                return 0;
+            }
+            else
+            {
+                return nextLine[lineNumber + toNextLineDisplay - 1];
+            }
+        }
         private float getCharWidth(int idx)
         {
             using (Graphics g = CreateGraphics())
@@ -425,43 +482,54 @@ namespace TypingTest
             {
                 if (charIndex >= num)
                 {
-                    if (backFlag && charIndex == num)
+                    strIdx++;
+                    if (strIdx != textStrings.Count)
                     {
-                        prevLineChange = true;
-                        xhangeLineRender = true;
-                        break;
+                        if (backFlag && charIndex == num)
+                        {
+                            if(strIdx - toNextLineDisplay == 0)
+                            {
+                                Program.printCheckpoint("Beginning of Text", true);
+                                printAvailable = true;
+                                return;
+                            }
+                            prevLineChange = true;
+                            xhangeLineRender = true;
+                            break;
+                        }
+                        charPos = charIndex - nextLine[strIdx - 1];
                     }
-                     strIdx++;
-                    charPos = charIndex - nextLine[strIdx - 1];
                 }
                 else
                 {
-                    if (charIndex == num - 1)
+                    if (charIndex == num - 1 && strIdx != textStrings.Count - 1)
                     {
-                        //if (strIdx >= 1 && strIdx != textStrings.Count-2)
-                        //{
-                        //    toNextLineDisplay++;
-                        //    init = true;
-                        //    this.Invalidate();
-                        //}
-                        if (strIdx == 2 && !backFlag)
+                        if (strIdx >= 1 && strIdx < textStrings.Count - 2 && !backFlag && strIdx > toNextLineDisplay)
                         {
-                            Program.printCheckpoint("End of Text", true);
-                            printAvailable = true;
+                           toNextLineDisplay++;
+                            resetBoundsHeight();
+                            charIndex++;
+                            this.Invalidate();
                             return;
-                        }   //End of third Line
+                        }
                         nextLineChange = true;
                         xhangeLineRender = true;
                     }
                     else
                     {
                         nextLineChange = false;
+                        if (charIndex == num && strIdx == textStrings.Count - 1 && !backFlag)
+                        {
+                            Program.printCheckpoint("End of Text", true);
+                            printAvailable = true;
+                            return;
+                        }   //End of third Line
                     }
                     break;
                 }
             }
 
-            if (isValidChar(ch) && strIdx <= 2)
+            if (isValidChar(ch) && strIdx - toNextLineDisplay <= 2)
             {
                 if (textStrings[strIdx][charPos].ToString() != ch.ToString())
                 {
@@ -489,6 +557,7 @@ namespace TypingTest
             {
                 charIndex--;
                 lastCharIndex = charIndex;
+                endOfText = false;
                 if (redChar.Contains(charIndex))
                 {
                     redChar.Remove(charIndex);
@@ -511,11 +580,21 @@ namespace TypingTest
             }
             else
             {
+                endOfText = true;
                 Console.WriteLine(ch);
                 Debug.Print(((short)ch).ToString());
                 printAvailable = true;
             }
             //if (nextLineChange) changeLineRender();
+        }
+
+        private void resetBoundsHeight()
+        {
+            resetBoundsHeightFlag = true;
+            foreach (boundStr b in bounds)
+            {
+                b.yCaret = b.yText = b.yCaret - ((int)charHeight);
+            }
         }
 
         private void changeLineRender()
